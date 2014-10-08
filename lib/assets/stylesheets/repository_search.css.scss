@@ -69,13 +69,13 @@
   }
 
   .modal-body {
-     height: 340px;
+     height: 480px;
      overflow: hidden;
   }
 }
 
 
-#repositories-search-results, .add-multiple-files ul {
+.repositories-search-results, .add-multiple-files ul {
   height: 290px;
   list-style: none;
   margin: 10px 0 10px 0;

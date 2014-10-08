@@ -20,7 +20,9 @@ pt-BR:
         source:        " Fonte "
         updated_at:    " Atualizado em "
         related_files: " Arquivos relacionados "
+        related_url:   " Url relacionada "
         size:          " Tamanho "
+        archive_fingerprint:  " Assinatura digital do arquivo "
       list:
         read_more:     " Leia mais "
         no_pages:      " Nenhuma página encontrada "

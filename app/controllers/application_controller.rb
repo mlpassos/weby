@@ -37,7 +37,7 @@ class ApplicationController < ActionController::Base
 
   def test_permission(ctrl, action)
     return false unless current_user
-    return true if current_user.is_admin
+    return true if current_user.is_admin || current_user.is_local_admin?(current_site)
     ctrl = ctrl.controller_name if ctrl.respond_to? :controller_name
     ctrl = ctrl.split('/')[-1] if ctrl.match(/^\w+\/\w+/)
     @current_rights.fetch(ctrl.to_sym, {}).fetch(action.to_sym, false)
@@ -140,13 +140,24 @@ class ApplicationController < ActionController::Base
   end
 
   def count_view
+
     return if is_in_admin_context? ||
-              !current_site ||
               request.format != 'html' ||
               response.status != 200 ||
               Weby::Bots.is_a_bot?(request.user_agent)
-
-    current_site.views.create(viewable: @page,
+    if(current_site)
+      current_site.views.create(viewable: @page,
+                                ip_address: request.remote_ip,
+                                referer: request.referer,
+                                user: current_user,
+                                query_string: request.query_string,
+                                request_path: request.path,
+                                user_agent: request.user_agent,
+                                session_hash: request.session_options[:id])
+      Page.increment_counter :view_count, @page.id if @page
+      Site.increment_counter :view_count, current_site.id
+    else
+      View.create(viewable: @page,
                               ip_address: request.remote_ip,
                               referer: request.referer,
                               user: current_user,
@@ -154,8 +165,7 @@ class ApplicationController < ActionController::Base
                               request_path: request.path,
                               user_agent: request.user_agent,
                               session_hash: request.session_options[:id])
-    Page.increment_counter :view_count, @page.id if @page
-    Site.increment_counter :view_count, current_site.id
+    end
   end
 
   # NOTE Review this method to include the extensions
@@ -223,8 +233,18 @@ class ApplicationController < ActionController::Base
   end
 
   def is_admin
-    return true if current_user.is_admin
+    return true if current_user.is_admin 
+    flash[:error] = t'only_admin'
 
+    begin
+      redirect_to :back
+    rescue
+      redirect_to admin_path
+    end
+  end
+
+  def global_local_admin
+    return true if current_user.is_local_admin?(current_site.id) || current_user.is_admin
     flash[:error] = t'only_admin'
 
     begin
@@ -283,10 +303,12 @@ class ApplicationController < ActionController::Base
 
     @current_rights = {}
     current_roles_assigned.each do |role|
-      role.permissions_hash.each do |controller, rights|
-        rights.each do |right|
-          Weby::Rights.actions(controller, right).each do |action|
-            (@current_rights[controller.to_sym] ||= {})[action.to_sym] = true
+      if role.permissions != "Admin"
+        role.permissions_hash.each do |controller, rights|
+          rights.each do |right|
+            Weby::Rights.actions(controller, right).each do |action|
+              (@current_rights[controller.to_sym] ||= {})[action.to_sym] = true
+            end
           end
         end
       end
@@ -376,5 +398,13 @@ class ApplicationController < ActionController::Base
     if Weby::Settings.maintenance_mode == 'true' && !current_user.try(:is_admin?) && is_in_admin_context?
       render template: 'errors/maintenance', layout: 'weby_pages'
     end
+  end
+end
+
+module Import
+  class Application < Rails::Application
+    CONVAR ||= {} # conversion variable, to translate de old repository_id to a new
+    CONVAR["repository"] = {}
+    CONVAR["menu"] = {}
   end
 end

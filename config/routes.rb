@@ -95,7 +95,14 @@ Rails.application.routes.draw do
       resources :users, only: [] do
         collection do
           get :manage_roles
-          post :change_roles
+          post :change_roles, :create_local_admin_role
+          delete :destroy_local_admin_role
+        end
+      end
+      resources :layouts, only: [] do
+        collection do
+          get :settings
+          patch :settings, action: "update_settings"
         end
       end
     end

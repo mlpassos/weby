@@ -31,8 +31,8 @@
         </header>
         <summary>
           <% if component.max_char.present? %>
-            <%= raw(news.summary[0..component.max_char.to_i] +
-                    (news.summary.size > component.max_char.to_i ? "..." : "")) %>
+            <%= raw(news.summary.to_s[0..component.max_char.to_i] +
+                    (news.summary.to_s.size > component.max_char.to_i ? "..." : "")) %>
           <% else  %>
             <%= raw news.summary %>
           <% end %>
